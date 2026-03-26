@@ -1,17 +1,116 @@
 /**
  * AEvent Placeholder Script
- * - Fills {!reg-*} merge tags with a fixed future date
- * - Drives countdown using id="days/hours/minutes/seconds"
+ * - Loads countdown.css externally (no embedded styles)
+ * - Auto-adds all required AEvent classes to your existing countdown HTML
+ * - Fills {!reg-*} merge tags with a future date
  * - Keeps timer perpetually running (never hits zero)
+ * - Hides seconds at max-width: 350px
  */
 
 (function () {
   "use strict";
 
-  // ─── CONFIG ──────────────────────────────────────────────────────────────────
-  const LEAD_MS = 24 * 60 * 60 * 1000;       // target = 24h from now
-  const RESET_THRESHOLD_MS = 60 * 1000;       // reset if < 1 min remains
-  const TICK_MS = 1000;
+  const LEAD_MS            = 24 * 60 * 60 * 1000;
+  const RESET_THRESHOLD_MS = 60 * 1000;
+  const TICK_MS            = 1000;
+
+  // ─── EXTERNAL CSS ─────────────────────────────────────────────────────────────
+  const CSS_URL = "countdown.css";
+
+  function loadExternalCSS() {
+    if (document.getElementById("aevent-placeholder-css")) return;
+    const link = document.createElement("link");
+    link.id   = "aevent-placeholder-css";
+    link.rel  = "stylesheet";
+    link.type = "text/css";
+    link.href = CSS_URL;
+    document.head.appendChild(link);
+
+    // Small screen: hide seconds
+    const style = document.createElement("style");
+    style.id = "aevent-placeholder-mq";
+    style.textContent = `
+      @media (max-width: 350px) {
+        .countdown-section-seconds { display: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // ─── INLINE STYLE ─────────────────────────────────────────────────────────────
+  const countdownAmount = document.querySelectorAll('.countdown-amount');
+  const countdownPeriod = document.querySelectorAll('.countdown-period');
+
+  function loadInlineStyle() {
+    countdownAmount.forEach(el => {
+        el.style.border = "none";
+        el.style.color = "var(--accent, #000)";
+        el.style.backgroundColor = "rgb(255, 255, 255)";
+        el.style.borderRadius = "12px 12px 0px 0px";
+        el.style.fontFamily = "sans-serif";
+        el.style.fontWeight = "700";
+        el.style.letterSpacing = "0px";
+        el.style.textAlign = "center";
+        el.style.padding = "0px";
+    });
+
+    countdownPeriod.forEach(el => {
+        el.style.textTransform = "uppercase";
+        el.style.borderBottomLeftRadius = "16px";
+        el.style.borderBottomRightRadius = "16px";
+        el.style.border = "none";
+        el.style.padding = "0px";
+        el.style.color = "rgb(255, 255, 255)";
+        el.style.backgroundColor = "var(--accent-dark, #5d5d5d)";
+        el.style.fontFamily = "sans-serif";
+        el.style.fontWeight = "bold";
+        el.style.fontSize = "10px";
+        el.style.letterSpacing = "0px";
+        el.style.textAlign = "center";
+    });
+  }
+
+  // ─── AUTO-CLASS COUNTDOWN HTML ────────────────────────────────────────────────
+  // Finds your .countdown-box and stamps all required AEvent classes onto it
+  // without touching your own markup structure.
+  const UNIT_ORDER = ["days", "hours", "minutes", "seconds"];
+
+  function stampClasses() {
+    const box = document.querySelector(".countdown-box");
+    if (!box) return;
+
+    // .countdown-row → add countdown-1
+    const row = box.querySelector(".countdown-row");
+    if (row) row.classList.add("countdown-1");
+
+    // Each .countdown-section → stamp section + amount + period classes
+    const sections = box.querySelectorAll(".countdown-section");
+    sections.forEach((section, i) => {
+      const unit = UNIT_ORDER[i];
+      if (!unit) return;
+
+      // Section wrapper
+      section.classList.add("elCountdownColumn", "countdown-section-" + unit, "visible");
+
+      // Amount element (the number)
+      const amount = section.querySelector(".countdown-amount");
+      if (amount) {
+        amount.classList.add("elCountdownAmount", "countdown-amount-" + unit);
+        amount.setAttribute("data-digit", "true");
+      }
+
+      // Period element (the label)
+      const period = section.querySelector(".countdown-period");
+      if (period) {
+        period.classList.add("elCountdownPeriod", "countdown-period-" + unit);
+        period.setAttribute("data-digit", "true");
+        // Add label text if empty
+        if (!period.textContent.trim()) {
+          period.textContent = unit;
+        }
+      }
+    });
+  }
 
   // ─── HELPERS ─────────────────────────────────────────────────────────────────
   function pad(n) {
@@ -23,16 +122,12 @@
   }
 
   // ─── MERGE TAG REPLACEMENT ───────────────────────────────────────────────────
-  // Builds a fake "registration date" 24 h from now and replaces {!reg-*} tokens
-  // in all text nodes on the page.
   function replaceMergeTags() {
     const future = new Date(getTarget());
-
     const DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
     const MONTHS = ["January","February","March","April","May","June",
                     "July","August","September","October","November","December"];
 
-    // Format hour as 12h with AM/PM
     let hour = future.getHours();
     const ampm = hour >= 12 ? "PM" : "AM";
     hour = hour % 12 || 12;
@@ -40,21 +135,16 @@
 
     const replacements = {
       "{!reg-dayofweek}":  DAYS[future.getDay()],
-      "{!reg-dayofmonth}": future.getDate(),
+      "{!reg-dayofmonth}": String(future.getDate()),
       "{!reg-month}":      MONTHS[future.getMonth()],
-      "{!reg-year}":       future.getFullYear(),
-      "{!reg-timeZone}":   `${hour}:${minute} ${ampm}`,
-      "{!reg-time}":       `${hour}:${minute} ${ampm}`,
+      "{!reg-year}":       String(future.getFullYear()),
+      "{!reg-timeZone}":   hour + ":" + minute + " " + ampm,
+      "{!reg-time}":       hour + ":" + minute + " " + ampm,
     };
 
-    // Walk all text nodes and replace any tokens found
     const walker = document.createTreeWalker(
-      document.body,
-      NodeFilter.SHOW_TEXT,
-      null,
-      false
+      document.body, NodeFilter.SHOW_TEXT, null, false
     );
-
     let node;
     while ((node = walker.nextNode())) {
       let val = node.nodeValue;
@@ -69,12 +159,11 @@
     }
   }
 
-  // ─── COUNTDOWN ───────────────────────────────────────────────────────────────
+  // ─── COUNTDOWN TICK ───────────────────────────────────────────────────────────
   let target = getTarget();
 
   function tick() {
     const diff = target - Date.now();
-
     if (diff <= RESET_THRESHOLD_MS) {
       target = getTarget();
       return;
@@ -86,43 +175,33 @@
     const m = Math.floor((totalSec % 3600) / 60);
     const s = totalSec % 60;
 
-    // Target the exact IDs used in your countdown HTML
-    const els = {
-      days:    document.getElementById("days"),
-      hours:   document.getElementById("hours"),
-      minutes: document.getElementById("minutes"),
-      seconds: document.getElementById("seconds"),
-    };
+    const set = (sel, val) =>
+      document.querySelectorAll(sel).forEach(el => el.textContent = val);
 
-    if (els.days)    els.days.textContent    = pad(d);
-    if (els.hours)   els.hours.textContent   = pad(h);
-    if (els.minutes) els.minutes.textContent = pad(m);
-    if (els.seconds) els.seconds.textContent = pad(s);
+    // AEvent class selectors (stamped by stampClasses)
+    set(".countdown-amount-days",    pad(d));
+    set(".countdown-amount-hours",   pad(h));
+    set(".countdown-amount-minutes", pad(m));
+    set(".countdown-amount-seconds", pad(s));
 
-    // Also cover other AEvent-style selectors as fallback
-    document.querySelectorAll(".wtl-days, [class*='days'][class*='count']")
-      .forEach(el => el.textContent = pad(d));
-    document.querySelectorAll(".wtl-hours, [class*='hours'][class*='count']")
-      .forEach(el => el.textContent = pad(h));
-    document.querySelectorAll(".wtl-mins, .wtl-minutes, [class*='minutes'][class*='count']")
-      .forEach(el => el.textContent = pad(m));
-    document.querySelectorAll(".wtl-secs, .wtl-seconds, [class*='seconds'][class*='count']")
-      .forEach(el => el.textContent = pad(s));
+    // Fallback: plain id selectors
+    const byId = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    byId("days",    pad(d));
+    byId("hours",   pad(h));
+    byId("minutes", pad(m));
+    byId("seconds", pad(s));
 
-    // Keep countdown wrapper visible
-    document.querySelectorAll(".countdown-box, .wtl-timer, .aevent-timer, [class*='countdown']")
-      .forEach(el => {
-        el.style.removeProperty("display");
-        el.style.removeProperty("visibility");
-        el.style.removeProperty("opacity");
-        el.hidden = false;
-      });
+    // Keep wrappers visible
+    document.querySelectorAll(".countdown-row, .countdown-box").forEach(el => {
+      el.style.removeProperty("display");
+      el.style.removeProperty("visibility");
+      el.hidden = false;
+    });
 
-    // Expose globals
     window.wtlCountdown = { days: d, hours: h, minutes: m, seconds: s, target };
   }
 
-  // ─── OVERRIDE AEVENT GLOBALS ─────────────────────────────────────────────────
+  // ─── OVERRIDE AEVENT GLOBALS ──────────────────────────────────────────────────
   function overrideGlobals() {
     const futureISO = new Date(target).toISOString();
     window.wtl_end_time     = futureISO;
@@ -131,17 +210,17 @@
     window.countdownEndTime = futureISO;
   }
 
-  // ─── INIT ────────────────────────────────────────────────────────────────────
+  // ─── INIT ─────────────────────────────────────────────────────────────────────
   function init() {
+    loadExternalCSS();
+    loadInlineStyle();
+    stampClasses();
     replaceMergeTags();
     overrideGlobals();
     tick();
     setInterval(tick, TICK_MS);
     setInterval(overrideGlobals, 5000);
-
-    console.info(
-      "[aevent-placeholder] Running. Target:", new Date(target).toLocaleString()
-    );
+    console.info("[aevent-placeholder] Running. Target:", new Date(target).toLocaleString());
   }
 
   if (document.readyState === "loading") {
