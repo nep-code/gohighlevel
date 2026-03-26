@@ -1,33 +1,16 @@
 /**
  * AEvent Placeholder Script
- * Mimics AEvent's getscript behavior for development/testing.
- * Keeps the countdown timer perpetually running so the confirmation
- * page never auto-hides or collapses the timer section.
- *
- * Usage (drop-in replacement):
- *   <script defer type="application/javascript" src="aevent-placeholder.js"></script>
- *
- * What it does:
- *   - Finds any AEvent-style countdown elements on the page
- *   - Sets the target time 24 hours ahead (always in the future)
- *   - Ticks every second so the display stays live
- *   - Prevents AEvent's "hide on zero" behavior by resetting
- *     the target whenever it gets close to expiry
+ * - Fills {!reg-*} merge tags with a fixed future date
+ * - Drives countdown using id="days/hours/minutes/seconds"
+ * - Keeps timer perpetually running (never hits zero)
  */
 
 (function () {
   "use strict";
 
   // ─── CONFIG ──────────────────────────────────────────────────────────────────
-  // How far ahead (in ms) the fake webinar target should be.
-  // 24 hours keeps it safely "in the future" no matter when the page loads.
-  const LEAD_MS = 24 * 60 * 60 * 1000;
-
-  // When the remaining time drops below this threshold (ms), reset the target.
-  // This prevents any "end of countdown" logic from firing.
-  const RESET_THRESHOLD_MS = 60 * 1000; // 1 minute safety buffer
-
-  // Tick interval
+  const LEAD_MS = 24 * 60 * 60 * 1000;       // target = 24h from now
+  const RESET_THRESHOLD_MS = 60 * 1000;       // reset if < 1 min remains
   const TICK_MS = 1000;
 
   // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -39,24 +22,59 @@
     return Date.now() + LEAD_MS;
   }
 
-  // ─── SELECTORS ───────────────────────────────────────────────────────────────
-  // AEvent uses these class/id patterns. We target all of them.
-  const SELECTORS = {
-    days:    "[class*='days'][class*='count'], #wtl-days,    .wtl-days",
-    hours:   "[class*='hours'][class*='count'], #wtl-hours,  .wtl-hours",
-    minutes: "[class*='minutes'][class*='count'], #wtl-mins, .wtl-minutes",
-    seconds: "[class*='seconds'][class*='count'], #wtl-secs, .wtl-seconds",
-    // AEvent wraps the whole timer in one of these
-    wrapper: ".wtl-timer, .aevent-timer, [class*='countdown'], [id*='countdown']",
-  };
+  // ─── MERGE TAG REPLACEMENT ───────────────────────────────────────────────────
+  // Builds a fake "registration date" 24 h from now and replaces {!reg-*} tokens
+  // in all text nodes on the page.
+  function replaceMergeTags() {
+    const future = new Date(getTarget());
 
-  // ─── CORE ────────────────────────────────────────────────────────────────────
+    const DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const MONTHS = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+
+    // Format hour as 12h with AM/PM
+    let hour = future.getHours();
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+    const minute = pad(future.getMinutes());
+
+    const replacements = {
+      "{!reg-dayofweek}":  DAYS[future.getDay()],
+      "{!reg-dayofmonth}": future.getDate(),
+      "{!reg-month}":      MONTHS[future.getMonth()],
+      "{!reg-year}":       future.getFullYear(),
+      "{!reg-timeZone}":   `${hour}:${minute} ${ampm}`,
+      "{!reg-time}":       `${hour}:${minute} ${ampm}`,
+    };
+
+    // Walk all text nodes and replace any tokens found
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+
+    let node;
+    while ((node = walker.nextNode())) {
+      let val = node.nodeValue;
+      let changed = false;
+      for (const [token, replacement] of Object.entries(replacements)) {
+        if (val.includes(token)) {
+          val = val.split(token).join(replacement);
+          changed = true;
+        }
+      }
+      if (changed) node.nodeValue = val;
+    }
+  }
+
+  // ─── COUNTDOWN ───────────────────────────────────────────────────────────────
   let target = getTarget();
 
   function tick() {
     const diff = target - Date.now();
 
-    // Safety reset — never let it reach zero
     if (diff <= RESET_THRESHOLD_MS) {
       target = getTarget();
       return;
@@ -68,35 +86,43 @@
     const m = Math.floor((totalSec % 3600) / 60);
     const s = totalSec % 60;
 
-    // Push values to any matching elements
-    document.querySelectorAll(SELECTORS.days).forEach(el => {
-      el.textContent = pad(d);
-    });
-    document.querySelectorAll(SELECTORS.hours).forEach(el => {
-      el.textContent = pad(h);
-    });
-    document.querySelectorAll(SELECTORS.minutes).forEach(el => {
-      el.textContent = pad(m);
-    });
-    document.querySelectorAll(SELECTORS.seconds).forEach(el => {
-      el.textContent = pad(s);
-    });
+    // Target the exact IDs used in your countdown HTML
+    const els = {
+      days:    document.getElementById("days"),
+      hours:   document.getElementById("hours"),
+      minutes: document.getElementById("minutes"),
+      seconds: document.getElementById("seconds"),
+    };
 
-    // Keep timer wrappers visible — override any AEvent hide attempts
-    document.querySelectorAll(SELECTORS.wrapper).forEach(el => {
-      el.style.removeProperty("display");
-      el.style.removeProperty("visibility");
-      el.style.removeProperty("opacity");
-      el.hidden = false;
-    });
+    if (els.days)    els.days.textContent    = pad(d);
+    if (els.hours)   els.hours.textContent   = pad(h);
+    if (els.minutes) els.minutes.textContent = pad(m);
+    if (els.seconds) els.seconds.textContent = pad(s);
 
-    // Also expose values as globals in case page JS reads them directly
+    // Also cover other AEvent-style selectors as fallback
+    document.querySelectorAll(".wtl-days, [class*='days'][class*='count']")
+      .forEach(el => el.textContent = pad(d));
+    document.querySelectorAll(".wtl-hours, [class*='hours'][class*='count']")
+      .forEach(el => el.textContent = pad(h));
+    document.querySelectorAll(".wtl-mins, .wtl-minutes, [class*='minutes'][class*='count']")
+      .forEach(el => el.textContent = pad(m));
+    document.querySelectorAll(".wtl-secs, .wtl-seconds, [class*='seconds'][class*='count']")
+      .forEach(el => el.textContent = pad(s));
+
+    // Keep countdown wrapper visible
+    document.querySelectorAll(".countdown-box, .wtl-timer, .aevent-timer, [class*='countdown']")
+      .forEach(el => {
+        el.style.removeProperty("display");
+        el.style.removeProperty("visibility");
+        el.style.removeProperty("opacity");
+        el.hidden = false;
+      });
+
+    // Expose globals
     window.wtlCountdown = { days: d, hours: h, minutes: m, seconds: s, target };
   }
 
-  // ─── INTERCEPT AEvent GLOBALS ────────────────────────────────────────────────
-  // AEvent scripts sometimes set window.wtl_end_time or window.webinarEndTime.
-  // Override them so any page-level hide logic also stays fooled.
+  // ─── OVERRIDE AEVENT GLOBALS ─────────────────────────────────────────────────
   function overrideGlobals() {
     const futureISO = new Date(target).toISOString();
     window.wtl_end_time     = futureISO;
@@ -107,11 +133,10 @@
 
   // ─── INIT ────────────────────────────────────────────────────────────────────
   function init() {
+    replaceMergeTags();
     overrideGlobals();
-    tick(); // immediate first paint
+    tick();
     setInterval(tick, TICK_MS);
-
-    // Re-override globals every 5 s in case a late-loading real script rewrites them
     setInterval(overrideGlobals, 5000);
 
     console.info(
