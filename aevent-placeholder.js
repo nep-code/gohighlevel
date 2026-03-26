@@ -15,7 +15,8 @@
   const TICK_MS            = 1000;
 
   // ─── EXTERNAL CSS ─────────────────────────────────────────────────────────────
-  const CSS_URL = "countdown.css";
+  //const CSS_URL = "countdown.css";
+  const CSS_URL = "https://nep-code.github.io/gohighlevel/countdown.css";
 
   function loadExternalCSS() {
     if (document.getElementById("aevent-placeholder-css")) return;
