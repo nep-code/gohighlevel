@@ -6,10 +6,10 @@
     const TICK_MS = 1000;
 
     // ─── EXTERNAL CSS ─────────────────────────────────────────────────────────────
-    //const CSS_URL = "countdown.css";
-    const CSS_URL = "https://nep-code.github.io/gohighlevel/countdown.css";
-
     function loadExternalCSS() {
+        /* const CSS_URL = "countdown.css";  //for local testing */
+        const CSS_URL = "https://nep-code.github.io/gohighlevel/countdown.css";
+
         if(document.getElementById("aevent-placeholder-css")) return;
         const link = document.createElement("link");
         link.id = "aevent-placeholder-css";
@@ -22,18 +22,18 @@
         const style = document.createElement("style");
         style.id = "aevent-placeholder-mq";
         style.textContent = `
-      @media (max-width: 350px) {
-        .countdown-section-seconds { display: none !important; }
-      }
-    `;
+            @media (max-width: 350px) {
+                .countdown-section-seconds { display: none !important; }
+            }
+        `;
         document.head.appendChild(style);
     }
 
     // ─── INLINE STYLE ─────────────────────────────────────────────────────────────
-    const countdownAmount = document.querySelectorAll('.countdown-amount');
-    const countdownPeriod = document.querySelectorAll('.countdown-period');
-
     function loadInlineStyle() {
+        const countdownAmount = document.querySelectorAll('.countdown-amount');
+        const countdownPeriod = document.querySelectorAll('.countdown-period');
+
         countdownAmount.forEach(el => {
             el.style.border = "none";
             el.style.color = "var(--accent, #000)";
@@ -242,6 +242,6 @@
     if(document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);
     } else {
-        init();
+        setTimeout(init, 300);
     }
 })();
