@@ -1,0 +1,37 @@
+.datetime-background {
+    padding: 5px;
+    text-align: left;
+    background-color: rgba(52, 52, 52, 1);
+}
+
+.datetime-background div {
+    margin: 5px 0;
+}
+
+.datetime-background .dayofweek {
+    font-weight: 700;
+    font-size: 20px;
+    color: rgb(255, 255, 255);
+}
+
+.datetime-background .month,
+.datetime-background .dayofmonth {
+    color: rgb(253, 253, 253);
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.datetime-background .divider {
+    padding: 5px 0;
+    border-top-width: 2px;
+    border-top-style: dashed;
+    border-top-color: rgba(255, 255, 255, 0.7);
+    min-height: 1px;
+}
+
+.datetime-background .esttime,
+.datetime-background .psttime {
+    font-weight: 700;
+    color: rgb(255, 255, 255);
+    font-size: 20px;
+}

@@ -4,21 +4,37 @@
     const LEAD_MS = 3 * 24 * 60 * 60 * 1000;
     const RESET_THRESHOLD_MS = 60 * 1000;
     const TICK_MS = 1000;
+    const BASE_URL = "https://nep-code.github.io/gohighlevel";
+    //const BASE_URL = "";
 
-    // ─── EXTERNAL CSS ─────────────────────────────────────────────────────────────
+    function url(path) {
+        return BASE_URL ? `${BASE_URL}/${path}` : path;
+    }
+
+    // ========================
+    //  EXTERNAL ASSETS
+    // ========================
     function loadExternalCSS() {
-        /* const CSS_URL = "countdown.css";  //for local testing */
-        const CSS_URL = "https://nep-code.github.io/gohighlevel/countdown.css";
+        
+        const CSS_FILES = [
+            url("styles/countdown.css"),
+            url("styles/flipclock.css"),
+            url("styles/registration.css"),
+            url("styles/intlTelInput.css"),
+        ];
 
-        if(document.getElementById("aevent-placeholder-css")) return;
-        const link = document.createElement("link");
-        link.id = "aevent-placeholder-css";
-        link.rel = "stylesheet";
-        link.type = "text/css";
-        link.href = CSS_URL;
-        document.head.appendChild(link);
+        // Load CSS
+        CSS_FILES.forEach((url, i) => {
+            if (document.querySelector(`link[href="${url}"]`)) return;
 
-        // Small screen: hide seconds
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = url;
+            link.dataset.asset = "aevent-css-" + i;
+            document.head.appendChild(link);
+        });
+
+        // Small screen tweak (keep yours)
         const style = document.createElement("style");
         style.id = "aevent-placeholder-mq";
         style.textContent = `
@@ -29,7 +45,9 @@
         document.head.appendChild(style);
     }
 
-    // ─── INLINE STYLE ─────────────────────────────────────────────────────────────
+    // ========================
+    //  INLINE STYLE
+    // ========================
     function loadInlineStyle() {
         const countdownAmount = document.querySelectorAll('.countdown-amount');
         const countdownPeriod = document.querySelectorAll('.countdown-period');
@@ -53,7 +71,7 @@
             el.style.border = "none";
             el.style.padding = "0px";
             el.style.color = "rgb(255, 255, 255)";
-            el.style.backgroundColor = "var(--accent-dark, #5d5d5d)";
+            el.style.backgroundColor = "var(--accent-dark, rgb(75, 85, 99))";
             el.style.fontFamily = "sans-serif";
             el.style.fontWeight = "bold";
             el.style.fontSize = "10px";
@@ -62,47 +80,62 @@
         });
     }
 
-    // ─── AUTO-CLASS COUNTDOWN HTML ────────────────────────────────────────────────
+    // ========================
+    //  AUTO-CLASS COUNTDOWN HTML
+    // ========================
     const UNIT_ORDER = ["days", "hours", "minutes", "seconds"];
 
     function stampClasses() {
-        const box = document.querySelector(".countdown-box");
-        if(!box) return;
+        const boxes = document.querySelectorAll(".countdown-box");
+        if(!boxes.length) return;
 
-        // .countdown-row → add countdown-1
-        const row = box.querySelector(".countdown-row");
-        if(row) row.classList.add("countdown-1");
+        boxes.forEach(box => {
+            const rows = box.querySelectorAll(".countdown-row");
 
-        // Each .countdown-section → stamp section + amount + period classes
-        const sections = box.querySelectorAll(".countdown-section");
-        sections.forEach((section, i) => {
-            const unit = UNIT_ORDER[i];
-            if(!unit) return;
+            rows.forEach(row => {
+                row.classList.add("countdown-1");
 
-            // Section wrapper
-            section.classList.add("elCountdownColumn", "countdown-section-" + unit, "visible");
+                const sections = row.querySelectorAll(".countdown-section");
 
-            // Amount element (the number)
-            const amount = section.querySelector(".countdown-amount");
-            if(amount) {
-                amount.classList.add("elCountdownAmount", "countdown-amount-" + unit);
-                amount.setAttribute("data-digit", "true");
-            }
+                sections.forEach((section, i) => {
+                    const unit = UNIT_ORDER[i];
+                    if(!unit) return;
 
-            // Period element (the label)
-            const period = section.querySelector(".countdown-period");
-            if(period) {
-                period.classList.add("elCountdownPeriod", "countdown-period-" + unit);
-                period.setAttribute("data-digit", "true");
-                // Add label text if empty
-                if(!period.textContent.trim()) {
-                    period.textContent = unit;
-                }
-            }
+                    section.classList.add(
+                        "elCountdownColumn",
+                        "countdown-section-" + unit,
+                        "visible"
+                    );
+
+                    const amount = section.querySelector(".countdown-amount");
+                    if(amount) {
+                        amount.classList.add(
+                            "elCountdownAmount",
+                            "countdown-amount-" + unit
+                        );
+                        amount.setAttribute("data-digit", "true");
+                    }
+
+                    const period = section.querySelector(".countdown-period");
+                    if(period) {
+                        period.classList.add(
+                            "elCountdownPeriod",
+                            "countdown-period-" + unit
+                        );
+                        period.setAttribute("data-digit", "true");
+
+                        if(!period.textContent.trim()) {
+                            period.textContent = unit;
+                        }
+                    }
+                });
+            });
         });
     }
 
-    // ─── HELPERS ─────────────────────────────────────────────────────────────────
+    // ========================
+    //  HELPERS
+    // ========================
     function pad(n) {
         return String(Math.max(0, n)).padStart(2, "0");
     }
@@ -111,7 +144,9 @@
         return Date.now() + LEAD_MS;
     }
 
-    // ─── MERGE TAG REPLACEMENT ───────────────────────────────────────────────────
+    // ========================
+    //  MERGE TAG REPLACEMENT
+    // ========================
     function replaceMergeTags() {
         const future = new Date(getTarget());
         const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -139,6 +174,8 @@
             "{!reg-timeZone}": pstDate,
             "{!reg-time}": hour + ":" + minute + " " + ampm,
             "{!joinurl}": "https://joinevent.link/{tenant}/{registrant}",
+            "{!webinar-subject}": "Exclusive Masterclass",
+            "{!webinar-body}": "Discover powerful ideas and actionable techniques in this in-depth masterclass created for individuals who want to grow and succeed. You’ll gain a clearer understanding of key concepts and how to apply them effectively in real-life situations. Walk away with practical knowledge you can use immediately to improve your results."
         };
 
         const walker = document.createTreeWalker(
@@ -164,9 +201,9 @@
         }
     }
 
-    
-
-    // ─── COUNTDOWN TICK ───────────────────────────────────────────────────────────
+    // ========================
+    //  COUNTDOWN TICK
+    // ========================
     let target = getTarget();
 
     function tick() {
@@ -217,7 +254,9 @@
         };
     }
 
-    // ─── OVERRIDE AEVENT GLOBALS ──────────────────────────────────────────────────
+    // ========================
+    //  OVERRIDE AEVENT GLOBALS
+    // ========================
     function overrideGlobals() {
         const futureISO = new Date(target).toISOString();
         window.wtl_end_time = futureISO;
@@ -226,13 +265,47 @@
         window.countdownEndTime = futureISO;
     }
 
-    // ─── INIT ─────────────────────────────────────────────────────────────────────
+    // ========================
+    //  OVERRIDE TEL INPUT
+    // ========================
+    function loadIntlTelInput(callback) {
+        const url = url("scripts/intlTelInput.js");
+        if (window.intlTelInput) return callback(); // already loaded
+
+        const script = document.createElement("script");
+        script.src = url;
+        script.onload = callback;
+        document.body.appendChild(script);
+    }
+
+    function overrideTelInput() {
+        loadIntlTelInput(() => {
+            const input = document.querySelector("#phone");
+            if (!input) return;
+
+            const iti = window.intlTelInput(input, {
+                initialCountry: "ph",
+                utilsScript: url("scripts/utils.js")
+            });
+
+            input.form.addEventListener("submit", (e) => {
+                e.preventDefault();
+                alert("Full number: " + iti.getNumber());
+            });
+        });
+    }
+
+    // ========================
+    //  INIT
+    // ========================
     function init() {
         loadExternalCSS();
         loadInlineStyle();
         stampClasses();
         replaceMergeTags();
         overrideGlobals();
+        overrideTelInput();
+
         tick();
         setInterval(tick, TICK_MS);
         setInterval(overrideGlobals, 5000);
@@ -242,6 +315,6 @@
     if(document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);
     } else {
-        setTimeout(init, 300);
+        setTimeout(init, 250);
     }
 })();
