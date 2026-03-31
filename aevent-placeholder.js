@@ -304,15 +304,13 @@
         loadInlineStyle();
         stampClasses();
         replaceMergeTags();
-        overrideGlobals();
-        
+        overrideGlobals();        
         overrideTelInput();
-        setTimeout(overrideTelInput, 1000);
 
         tick();
         setInterval(tick, TICK_MS);
         setInterval(overrideGlobals, 5000);
-        console.info("[aevent-placeholder] Running. Target:", new Date(target).toLocaleString());
+        //console.info("[aevent-placeholder] Running. Target:", new Date(target).toLocaleString());
     }
 
     if(document.readyState === "loading") {
