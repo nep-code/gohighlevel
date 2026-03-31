@@ -20,16 +20,16 @@
             url("styles/countdown.css"),
             url("styles/flipclock.css"),
             url("styles/registration.css"),
-            url("styles/intlTelInput.css"),
+            url("styles/intlTelInput.css")
         ];
 
         // Load CSS
-        CSS_FILES.forEach((url, i) => {
-            if (document.querySelector(`link[href="${url}"]`)) return;
+        CSS_FILES.forEach((href, i) => {
+            if (document.querySelector(`link[href="${href}"]`)) return;
 
             const link = document.createElement("link");
             link.rel = "stylesheet";
-            link.href = url;
+            link.href = href;
             link.dataset.asset = "aevent-css-" + i;
             document.head.appendChild(link);
         });
@@ -269,11 +269,12 @@
     //  OVERRIDE TEL INPUT
     // ========================
     function loadIntlTelInput(callback) {
-        const url = url("scripts/intlTelInput.js");
+        const src  = url("scripts/intlTelInput.js");
+        console.log(src);
         if (window.intlTelInput) return callback(); // already loaded
 
         const script = document.createElement("script");
-        script.src = url;
+        script.src = src;
         script.onload = callback;
         document.body.appendChild(script);
     }
