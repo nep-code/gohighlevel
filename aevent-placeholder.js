@@ -305,7 +305,9 @@
         stampClasses();
         replaceMergeTags();
         overrideGlobals();
+        
         overrideTelInput();
+        setTimeout(overrideTelInput, 1000);
 
         tick();
         setInterval(tick, TICK_MS);
